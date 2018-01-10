@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 namespace Microsoft.AppCenter.Analytics
 {
     /// <summary>
-    ///     Analytics feature.
+    /// Analytics feature.
     /// </summary>
     public class Analytics : IAppCenterService
     {
@@ -37,17 +37,27 @@ namespace Microsoft.AppCenter.Analytics
         //public static bool AutoPageTrackingEnabled { get; set; }
 
         /// <summary>
-        ///     Track a custom event.
+        /// Track a custom event.
         /// </summary>
         /// <param name="name">An event name.</param>
         /// <param name="properties">Optional properties.</param>
+        /// <seealso cref="TrackEventAsync"/>
         public static void TrackEvent(string name, IDictionary<string, string> properties = null)
         {
         }
 
-        ///// Track a custom page.
+        /// <summary>
+        /// Track a custom event.
+        /// </summary>
+        /// <param name="name">An event name.</param>
+        /// <param name="properties">Optional properties.</param>
+        public static Task TrackEventAsync(string name, IDictionary<string, string> properties = null)
+        {
+            return Task.FromResult(default(object));
+        }
 
         ///// <summary>
+        ///// Track a custom page.
         ///// </summary>
         ///// <param name="name">A page name.</param>
         ///// <param name="properties">Optional properties.</param>

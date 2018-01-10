@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using Microsoft.AppCenter.Channel;
-using Microsoft.AppCenter.Analytics.Ingestion.Models;
+using System.Threading.Tasks;
 using Microsoft.AppCenter.Analytics.Channel;
+using Microsoft.AppCenter.Analytics.Ingestion.Models;
+using Microsoft.AppCenter.Channel;
 using Microsoft.AppCenter.Ingestion.Models.Serialization;
 using Microsoft.AppCenter.Utils;
-using System.Threading.Tasks;
 
 namespace Microsoft.AppCenter.Analytics
 {
@@ -66,21 +66,41 @@ namespace Microsoft.AppCenter.Analytics
         }
 
         /// <summary>
-        ///     Track a custom event with name and optional properties.
+        /// Track a custom event with name and optional properties.
         /// </summary>
         /// <remarks>
-        ///     The name parameter can not be null or empty.Maximum allowed length = 256.
-        ///     The properties parameter maximum item count = 5.
-        ///     The properties keys/names can not be null or empty, maximum allowed key length = 64.
-        ///     The properties values can not be null, maximum allowed value length = 64.
+        /// The name parameter can not be null or empty.Maximum allowed length = 256.
+        /// The properties parameter maximum item count = 5.
+        /// The properties keys/names can not be null or empty, maximum allowed key length = 64.
+        /// The properties values can not be null, maximum allowed value length = 64.
         /// </remarks>
         /// <param name="name">An event name.</param>
         /// <param name="properties">Optional properties.</param>
+        /// <seealso cref="TrackEventAsync"/>
         public static void TrackEvent(string name, IDictionary<string, string> properties = null)
         {
             lock (AnalyticsLock)
             {
                 Instance.InstanceTrackEvent(name, properties);
+            }
+        }
+
+        /// <summary>
+        /// Track a custom event with name and optional properties.
+        /// </summary>
+        /// <remarks>
+        /// The name parameter can not be null or empty.Maximum allowed length = 256.
+        /// The properties parameter maximum item count = 5.
+        /// The properties keys/names can not be null or empty, maximum allowed key length = 64.
+        /// The properties values can not be null, maximum allowed value length = 64.
+        /// </remarks>
+        /// <param name="name">An event name.</param>
+        /// <param name="properties">Optional properties.</param>
+        public static Task TrackEventAsync(string name, IDictionary<string, string> properties = null)
+        {
+            lock (AnalyticsLock)
+            {
+                return Instance.InstanceTrackEvent(name, properties);
             }
         }
 
@@ -129,21 +149,23 @@ namespace Microsoft.AppCenter.Analytics
 
         public override string ServiceName => "Analytics";
 
-        private void InstanceTrackEvent(string name, IDictionary<string, string> properties = null)
+        // That method isn't async itself but can return async task from the channel for awaiting log enqueue.
+        private Task InstanceTrackEvent(string name, IDictionary<string, string> properties = null)
         {
             lock (_serviceLock)
             {
                 if (IsInactive)
                 {
-                    return;
+                    return Task.FromResult(default(object));
                 }
                 const string type = "Event";
                 if (ValidateName(ref name, type))
                 {
                     properties = ValidateProperties(properties, name, type);
                     var log = new EventLog(null, null, Guid.NewGuid(), name, null, properties);
-                    Channel.EnqueueAsync(log);
+                    return Channel.EnqueueAsync(log);
                 }
+                return Task.FromResult(default(object));
             }
         }
 
@@ -210,6 +232,7 @@ namespace Microsoft.AppCenter.Analytics
             ApplicationLifecycleHelper.Instance.ApplicationResuming += ApplicationResumingEventHandler;
             ApplicationLifecycleHelper.Instance.ApplicationSuspended += ApplicationSuspendedEventHandler;
         }
+
         private void UnsubscribeFromApplicationLifecycleEvents()
         {
             ApplicationLifecycleHelper.Instance.ApplicationResuming -= ApplicationResumingEventHandler;
