@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using ObjCRuntime;
 
@@ -139,10 +140,29 @@ namespace Microsoft.AppCenter
 
         static Class[] GetServices(IEnumerable<Type> services)
         {
-            var classes = new List<Class>();
-            foreach (var t in services)
+            string GetAssemblyVersion(Type type)
             {
-                var bindingType = GetBindingType(t);
+                var fileVersionInfo = FileVersionInfo.GetVersionInfo(type.Assembly.Location);
+                return fileVersionInfo.FileVersion;
+            }
+
+            var appCenterVersion = GetAssemblyVersion(typeof(AppCenter));
+            var classes = new List<Class>();
+            foreach (var service in services)
+            {
+                // Check the version only for standard modules.
+                var serviceAssemblyName = service.Assembly.GetName().Name;
+                if (serviceAssemblyName.StartsWith("Microsoft.AppCenter.", StringComparison.InvariantCulture))
+                {
+                    var serviceVersion = GetAssemblyVersion(service);
+                    if (serviceVersion != appCenterVersion)
+                    {
+                        AppCenterLog.Error(AppCenterLog.LogTag, "Version mismatch error. " +
+                                           $"AppCenter version is {appCenterVersion}, " +
+                                           $"but {service.Name} comes from {serviceVersion}");
+                    }
+                }
+                var bindingType = GetBindingType(service);
                 if (bindingType != null)
                 {
                     var aClass = GetClassForType(bindingType);

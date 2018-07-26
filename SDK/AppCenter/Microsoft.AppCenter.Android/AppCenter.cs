@@ -6,6 +6,7 @@ using Java.Lang;
 
 namespace Microsoft.AppCenter
 {
+    using System.Diagnostics;
     using System.Reflection;
     using System.Threading.Tasks;
     using Com.Microsoft.Appcenter.Utils.Async;
@@ -167,10 +168,29 @@ namespace Microsoft.AppCenter
 
         static Class[] GetServices(IEnumerable<Type> services)
         {
-            var classes = new List<Class>();
-            foreach (var t in services)
+            string GetAssemblyVersion(Type type)
             {
-                var propertyInfo = t.GetProperty("BindingType");
+                var fileVersionInfo = FileVersionInfo.GetVersionInfo(type.Assembly.Location);
+                return fileVersionInfo.FileVersion;
+            }
+
+            var appCenterVersion = GetAssemblyVersion(typeof(AppCenter));
+            var classes = new List<Class>();
+            foreach (var service in services)
+            {
+                // Check the version only for standard modules.
+                var serviceAssemblyName = service.Assembly.GetName().Name;
+                if (serviceAssemblyName.StartsWith("Microsoft.AppCenter.", StringComparison.InvariantCulture))
+                {
+                    var serviceVersion = GetAssemblyVersion(service);
+                    if (serviceVersion != appCenterVersion)
+                    {
+                        AppCenterLog.Error(AppCenterLog.LogTag, "Version mismatch error. " +
+                                           $"AppCenter version is {appCenterVersion}, " +
+                                           $"but {service.Name} comes from {serviceVersion}");
+                    }
+                }
+                var propertyInfo = service.GetProperty("BindingType");
                 if (propertyInfo != null)
                 {
                     var value = (Type)propertyInfo.GetValue(null, null);
